@@ -60,11 +60,6 @@ namespace LibrarySystem.Services
             return _reviewRepository.GetAll();
         }
 
-        public List<Review> GetReviewsByBook(int bookId)
-        {
-            return _reviewRepository.GetByBookId(bookId);
-        }
-
         public List<Review> GetReviewsByUser(int userId)
         {
             return _reviewRepository.GetByUserId(userId);

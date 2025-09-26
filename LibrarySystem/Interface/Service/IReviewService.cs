@@ -8,7 +8,6 @@ namespace LibrarySystem.Interface.Service
         void EditReview(int reviewId, string? comment, int rating);
         void DeleteReview(int reviewId);
         void ApproveReview(int reviewId); // فقط Admin
-        List<Review> GetReviewsByBook(int bookId);
         List<Review> GetReviewsByUser(int userId);
         List<Review> GetAllReviews(); // برای Admin
     }
