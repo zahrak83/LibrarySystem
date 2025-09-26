@@ -16,7 +16,6 @@ namespace LibrarySystem.Repositories
             _context.SaveChanges();
             return review.Id;
         }
-
         public void Delete(int id)
         {
             var review = _context.Reviews.Find(id);
@@ -26,7 +25,6 @@ namespace LibrarySystem.Repositories
                 _context.SaveChanges();
             }
         }
-
         public List<Review> GetAll()
         {
             return _context.Reviews
@@ -35,8 +33,7 @@ namespace LibrarySystem.Repositories
                 .ThenInclude(b => b.Category)
                 .ToList();
         }
-
-        public Review GetById(int id)
+        public Review? GetById(int id)
         {
             return _context.Reviews
                 .Include(r => r.User)
@@ -44,7 +41,6 @@ namespace LibrarySystem.Repositories
                 .ThenInclude(b => b.Category)
                 .FirstOrDefault(r => r.Id == id);
         }
-
         public List<Review> GetByBookId(int bookId)
         {
             return _context.Reviews
@@ -52,7 +48,6 @@ namespace LibrarySystem.Repositories
                 .Where(r => r.BookId == bookId && r.IsApproved)
                 .ToList();
         }
-
         public List<Review> GetByUserId(int userId)
         {
             return _context.Reviews
@@ -61,7 +56,6 @@ namespace LibrarySystem.Repositories
                 .Where(r => r.UserId == userId)
                 .ToList();
         }
-
         public void Update(Review review)
         {
             var r = _context.Reviews.Find(review.Id);
