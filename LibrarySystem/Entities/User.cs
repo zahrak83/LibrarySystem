@@ -10,5 +10,6 @@ namespace LibrarySystem.Entities
         public string Password { get; set; }
         public RoleEnum Role { get; set; }
         public List<BorrowedBook> BorrowedBook { get; set; } = new();
+        public List<Review> Reviews { get; set; } = new();
     }
 }
