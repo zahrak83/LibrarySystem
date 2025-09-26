@@ -12,6 +12,7 @@ namespace LibrarySystem.Infrastructure
         public DbSet<Category> Categories { get; set; }
         public DbSet<BorrowedBook> BorrowedBooks { get; set; }
         public DbSet<Review> Reviews { get; set; }
+        public DbSet<Wishlist> Wishlist { get; set; }
 
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -46,6 +47,12 @@ namespace LibrarySystem.Infrastructure
                       .WithOne(r => r.User)
                       .HasForeignKey(r => r.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<User>(entity =>
+                {
+                    entity.Property(u => u.PenaltyAmount)
+                          .HasDefaultValue(0);
+                });
             });
 
             //Category
@@ -127,6 +134,25 @@ namespace LibrarySystem.Infrastructure
                       .WithMany(b => b.Reviews)
                       .HasForeignKey(r => r.BookId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Wishlist
+            modelBuilder.Entity<Wishlist>(entity =>
+            {
+                entity.HasKey(w => w.Id);
+
+                entity.HasOne(w => w.User)
+                      .WithMany(u => u.Wishlists)
+                      .HasForeignKey(w => w.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(w => w.Book)
+                      .WithMany()
+                      .HasForeignKey(w => w.BookId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                entity.Property(w => w.CreatedAt)
+                      .HasDefaultValueSql("GETDATE()");
             });
         }
     }

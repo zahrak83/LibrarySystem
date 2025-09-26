@@ -11,7 +11,7 @@ namespace LibrarySystem.Entities
         public RoleEnum Role { get; set; }
         public List<BorrowedBook> BorrowedBook { get; set; } = new();
         public List<Review> Reviews { get; set; } = new();
-        public List<Wishlist> Wishlist { get; set; } = new();
+        public List<Wishlist> Wishlists { get; set; } = new();
         public decimal PenaltyAmount { get; set; } = 0;
     }
 }
