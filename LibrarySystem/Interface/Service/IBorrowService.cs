@@ -7,7 +7,7 @@ namespace LibrarySystem.Interface.Service
         int BorrowBook(int userId, int bookId);
         List<BorrowedBook> GetBorrowedBooksByUser(int userId);
         public List<BorrowedBook> GetAllBorrowedBooks();
-        void ReturnBook(int borrowedBookId);
+        int ReturnBook(int borrowedBookId);
 
     }
 }

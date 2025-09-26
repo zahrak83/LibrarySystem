@@ -1,6 +1,7 @@
 ﻿using LibrarySystem.Entities;
 using LibrarySystem.Enum;
 using LibrarySystem.Extention;
+using LibrarySystem.Infrastructure;
 using LibrarySystem.Interface.Service;
 using LibrarySystem.Services;
 
@@ -117,12 +118,15 @@ void UserMenu(User user)
         Console.ForegroundColor = ConsoleColor.Yellow;
         Console.WriteLine($"--- User Menu ({user.UserName}) ---");
         Console.ResetColor();
+
         Console.WriteLine("1. View Categories and Books");
         Console.WriteLine("2. Borrow a Book");
         Console.WriteLine("3. View My Borrowed Books");
         Console.WriteLine("4. Return a Book");
         Console.WriteLine("5. Add Review to a Book");
         Console.WriteLine("6. View/Edit/Delete My Reviews");
+        Console.WriteLine("7. Manage Wishlist");   
+        Console.WriteLine("8. View My Penalty");  
         Console.WriteLine("0. Logout");
         Console.Write("Choose an option: ");
         var choice = Console.ReadLine();
@@ -147,10 +151,17 @@ void UserMenu(User user)
             case "6":
                 ManageMyReviews(user);
                 break;
+            case "7":
+                ManageWishlist(user);  
+                break;
+            case "8":
+                ShowPenalty(user);      
+                break;
             case "0":
                 return;
             default:
                 Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Invalid option. Please try again."); 
                 Console.ResetColor();
                 Console.ReadKey();
                 break;
@@ -171,6 +182,7 @@ void AdminMenu(User admin)
         Console.WriteLine("4. View Categories and Books");
         Console.WriteLine("5. View Borrowed Books by Users");
         Console.WriteLine("6. Manage Reviews");
+        Console.WriteLine("7. View Users' Penalties");
         Console.WriteLine("0. Logout");
         Console.Write("Choose an option: ");
         var choice = Console.ReadLine();
@@ -195,10 +207,14 @@ void AdminMenu(User admin)
             case "6":
                 ManageReviews();
                 break;
+            case "7":
+                ShowAllPenalties(admin);
+                break;
             case "0":
                 return;
             default:
                 Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Invalid choice! Try again.");
                 Console.ResetColor();
                 Console.ReadKey();
                 break;
@@ -227,19 +243,22 @@ void ShowCategoriesAndBooks()
             continue;
         }
 
-        
+
+        var wishlistService = new WishlistService();
+
         ConsolePainter.WriteTable(cat.Books.Select(b => new
         {
             b.Id,
             b.Title,
             b.Author,
             AverageRating = b.Reviews != null && b.Reviews.Any(r => r.IsApproved)
-                ? Math.Round(b.Reviews.Where(r => r.IsApproved).Average(r => r.Rating), 2)
-                : 0,
-            ReviewCount = b.Reviews?.Count(r => r.IsApproved) ?? 0
+                ? Math.Round(b.Reviews.Where(r => r.IsApproved).Average(r => r.Rating), 2): 0,
+            ReviewCount = b.Reviews?.Count(r => r.IsApproved) ?? 0,
+            WishlistCount = wishlistService.GetWishlistByBook(b.Id).Count   
         }), headerColor: ConsoleColor.Yellow, rowColor: ConsoleColor.White);
 
-        
+
+
         foreach (var book in cat.Books)
         {
             var approvedReviews = book.Reviews?.Where(r => r.IsApproved).ToList();
@@ -315,7 +334,7 @@ void ReturnBook(User user)
         }
 
         Console.Clear();
-        
+
         ConsolePainter.WriteTable(borrowed.Select(bb => new
         {
             bb.Id,
@@ -334,11 +353,15 @@ void ReturnBook(User user)
             Console.ResetColor();
         }
 
-        borrowService.ReturnBook(borrowedBookId);
+        
+        var penalty = borrowService.ReturnBook(borrowedBookId); 
 
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine("Book returned successfully!");
+        if (penalty > 0)
+            Console.WriteLine($"Late return! Penalty applied: {penalty} Toman.");
         Console.ResetColor();
+
         Console.ReadKey();
     }
     catch (Exception ex)
@@ -629,5 +652,89 @@ void ManageReviews()
 
     Console.ReadKey();
 }
+void ManageWishlist(User user)
+{
+    var wishlistService = new WishlistService();
+    Console.Clear();
+    Console.WriteLine("1. Add to Wishlist");
+    Console.WriteLine("2. View My Wishlist");
+    Console.WriteLine("3. Remove from Wishlist");
+    Console.Write("Choose: ");
+    var choice = Console.ReadLine();
+
+    switch (choice)
+    {
+        case "1":
+            ShowCategoriesAndBooks();
+            Console.Write("Enter Book ID: ");
+            if (int.TryParse(Console.ReadLine(), out int bookId))
+            {
+                wishlistService.AddToWishlist(user.Id, bookId);
+                Console.WriteLine("Book added to Wishlist!");
+            }
+            else
+            {
+                Console.WriteLine("Invalid Book ID!");
+            }
+            break;
+
+        case "2":
+            var list = wishlistService.GetWishlistByUser(user.Id);
+            if (list.Any())
+                ConsolePainter.WriteTable(list.Select(w => new { w.Id, w.Book.Title, w.CreatedAt }));
+            else
+                Console.WriteLine("Your wishlist is empty.");
+            break;
+
+        case "3":
+            var removeList = wishlistService.GetWishlistByUser(user.Id);
+            if (!removeList.Any())
+            {
+                Console.WriteLine("Your wishlist is empty.");
+                break;
+            }
+
+            ConsolePainter.WriteTable(removeList.Select(w => new { w.Id, w.Book.Title }));
+            Console.Write("Enter Wishlist ID to remove: ");
+            if (int.TryParse(Console.ReadLine(), out int wid) && removeList.Any(w => w.Id == wid))
+            {
+                wishlistService.RemoveFromWishlist(wid);
+                Console.WriteLine("Removed successfully!");
+            }
+            else
+            {
+                Console.WriteLine("Invalid Wishlist ID!");
+            }
+            break;
+
+        default:
+            Console.WriteLine("Invalid option. Please try again.");
+            break;
+    }
+
+    Console.ReadKey();
+}
+void ShowPenalty(User user)
+{
+    Console.Clear();
+    Console.WriteLine($"Your total penalty: {user.PenaltyAmount} Toman");
+    Console.ReadKey();
+}
+void ShowAllPenalties(User admin)
+{
+    using var context = new AppDBContext();
+    var users = context.Users
+                       .Where(u => u.Id != admin.Id)
+                       .Select(u => new { u.UserName, u.PenaltyAmount })
+                       .ToList();
+
+    Console.Clear();
+    ConsolePainter.WriteLine("--- Users' Penalties ---", ConsoleColor.Yellow);
+    ConsolePainter.WriteTable(users, headerColor: ConsoleColor.Cyan, rowColor: ConsoleColor.White);
+    Console.WriteLine("\nPress any key to return...");
+    Console.ReadKey();
+}
+
+
 
 

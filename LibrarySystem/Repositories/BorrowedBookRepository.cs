@@ -34,8 +34,11 @@ namespace LibrarySystem.Repositories
         }
         public BorrowedBook? GetById(int id)
         {
-            return _context.BorrowedBooks.Find(id);
+            return _context.BorrowedBooks
+                .Include(bb => bb.User)
+                .FirstOrDefault(bb => bb.Id == id);
         }
+
         public List<BorrowedBook> GetByUserId(int userId)
         {
             return _context.BorrowedBooks

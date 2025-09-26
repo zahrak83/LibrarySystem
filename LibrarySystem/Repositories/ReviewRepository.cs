@@ -51,6 +51,7 @@ namespace LibrarySystem.Repositories
         public List<Review> GetByUserId(int userId)
         {
             return _context.Reviews
+                .Include(r => r.User)               
                 .Include(r => r.Book)
                 .ThenInclude(b => b.Category)
                 .Where(r => r.UserId == userId)
