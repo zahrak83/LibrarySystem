@@ -32,7 +32,7 @@ namespace LibrarySystem.Infrastructure
 
                 entity.Property(u => u.Password)
                       .IsRequired()
-                      .HasMaxLength(100);
+                      .HasMaxLength(50);
 
                 entity.Property(u => u.Role)
                       .IsRequired();
@@ -70,11 +70,11 @@ namespace LibrarySystem.Infrastructure
 
                 entity.Property(b => b.Title)
                       .IsRequired()
-                      .HasMaxLength(200);
+                      .HasMaxLength(50);
 
                 entity.Property(b => b.Author)
                       .IsRequired()
-                      .HasMaxLength(100);
+                      .HasMaxLength(50);
 
                 entity.HasMany(b => b.Reviews)
                       .WithOne(r => r.Book)
@@ -107,7 +107,7 @@ namespace LibrarySystem.Infrastructure
                 entity.HasKey(r => r.Id);
 
                 entity.Property(r => r.Comment)
-                      .HasMaxLength(500);
+                      .HasMaxLength(100);
 
                 entity.Property(r => r.Rating)
                       .IsRequired();
