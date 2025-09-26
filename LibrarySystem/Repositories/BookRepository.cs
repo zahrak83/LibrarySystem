@@ -29,6 +29,8 @@ namespace LibrarySystem.Repositories
         {
             return _context.Books
                 .Include(b => b.Category)
+                .Include(b => b.Reviews)
+                .ThenInclude(r => r.User)
                 .ToList();
         }
         public Book? GetById(int id)

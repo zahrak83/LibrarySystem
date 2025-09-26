@@ -8,6 +8,7 @@ namespace LibrarySystem.Repositories
     public class CategoryRepository : ICategoryRepository
     {
         AppDBContext _context = new AppDBContext();
+
         public int Create(Category category)
         {
             _context.Categories.Add(category);
@@ -27,6 +28,8 @@ namespace LibrarySystem.Repositories
         {
             return _context.Categories
                 .Include(c => c.Books)
+                .ThenInclude(b => b.Reviews)
+                .ThenInclude(r => r.User)
                 .ToList();
         }
         public Category? GetById(int id)
