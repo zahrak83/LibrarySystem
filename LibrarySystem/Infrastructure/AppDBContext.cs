@@ -11,6 +11,8 @@ namespace LibrarySystem.Infrastructure
         public DbSet<Book> Books { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<BorrowedBook> BorrowedBooks { get; set; }
+        public DbSet<Review> Reviews { get; set; }
+
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
