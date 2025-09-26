@@ -8,6 +8,7 @@ IAuthService auth = new AuthService();
 IBookService bookService = new BookService();
 IBorrowService borrowService = new BorrowService();
 ICategoryService categoryService = new CategoryService();
+IReviewService reviewService = new ReviewService();
 
 while (true)
 {
@@ -74,7 +75,6 @@ void Register()
         Console.ReadKey();
     }
 }
-
 void Login()
 {
     try
@@ -121,6 +121,8 @@ void UserMenu(User user)
         Console.WriteLine("2. Borrow a Book");
         Console.WriteLine("3. View My Borrowed Books");
         Console.WriteLine("4. Return a Book");
+        Console.WriteLine("5. Add Review to a Book");
+        Console.WriteLine("6. View/Edit/Delete My Reviews");
         Console.WriteLine("0. Logout");
         Console.Write("Choose an option: ");
         var choice = Console.ReadLine();
@@ -138,6 +140,12 @@ void UserMenu(User user)
                 break;
             case "4":
                 ReturnBook(user);
+                break;
+            case "5":
+                AddReview(user);
+                break;
+            case "6":
+                ManageMyReviews(user);
                 break;
             case "0":
                 return;
@@ -162,6 +170,7 @@ void AdminMenu(User admin)
         Console.WriteLine("3. Add Book");
         Console.WriteLine("4. View Categories and Books");
         Console.WriteLine("5. View Borrowed Books by Users");
+        Console.WriteLine("6. Manage Reviews");
         Console.WriteLine("0. Logout");
         Console.Write("Choose an option: ");
         var choice = Console.ReadLine();
@@ -183,6 +192,9 @@ void AdminMenu(User admin)
             case "5":
                 ShowAllBorrowedBooks();
                 break;
+            case "6":
+                ManageReviews();
+                break;
             case "0":
                 return;
             default:
@@ -197,22 +209,53 @@ void ShowCategoriesAndBooks()
 {
     Console.Clear();
     var categories = categoryService.GetAllCategories();
+
     if (!categories.Any())
     {
         Console.WriteLine("(No categories found)");
         Console.ReadKey();
         return;
     }
+
     foreach (var cat in categories)
     {
         ConsolePainter.WriteLine($"Category [{cat.Id}]: {cat.Name}", foreground: ConsoleColor.Cyan);
+
         if (cat.Books == null || !cat.Books.Any())
         {
-            ConsolePainter.WriteLine(" (No books in this category)", foreground: ConsoleColor.DarkGray);
+            ConsolePainter.WriteLine("   (No books in this category)", foreground: ConsoleColor.DarkGray);
             continue;
         }
-        ConsolePainter.WriteTable(cat.Books.Select(b => new { b.Id, b.Title, b.Author, }), headerColor: ConsoleColor.Yellow, rowColor: ConsoleColor.White);
+
+        
+        ConsolePainter.WriteTable(cat.Books.Select(b => new
+        {
+            b.Id,
+            b.Title,
+            b.Author,
+            AverageRating = b.Reviews != null && b.Reviews.Any(r => r.IsApproved)
+                ? Math.Round(b.Reviews.Where(r => r.IsApproved).Average(r => r.Rating), 2)
+                : 0,
+            ReviewCount = b.Reviews?.Count(r => r.IsApproved) ?? 0
+        }), headerColor: ConsoleColor.Yellow, rowColor: ConsoleColor.White);
+
+        
+        foreach (var book in cat.Books)
+        {
+            var approvedReviews = book.Reviews?.Where(r => r.IsApproved).ToList();
+            if (approvedReviews != null && approvedReviews.Any())
+            {
+                ConsolePainter.WriteLine($"  Reviews for '{book.Title}':", foreground: ConsoleColor.Green);
+                foreach (var review in approvedReviews)
+                {
+                    ConsolePainter.WriteLine($"    [{review.User.UserName}] Rating: {review.Rating}, Comment: {review.Comment}", foreground: ConsoleColor.Gray);
+                }
+            }
+        }
+
+        Console.WriteLine();
     }
+
     Console.ReadKey();
 }
 void BorrowBook(User user)
@@ -433,4 +476,158 @@ void ShowAllBorrowedBooks()
     }
     Console.ReadKey();
 }
+void AddReview(User user)
+{
+    try
+    {
+        ShowCategoriesAndBooks();
+        Console.Write("Enter Book ID to review: ");
+        int bookId = int.Parse(Console.ReadLine());
+
+        Console.Write("Enter comment (optional): ");
+        string? comment = Console.ReadLine();
+
+        int rating;
+        do
+        {
+            Console.Write("Enter rating (1-5): ");
+        } while (!int.TryParse(Console.ReadLine(), out rating) || rating < 1 || rating > 5);
+
+        reviewService.AddReview(user.Id, bookId, comment, rating);
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Review submitted successfully! Waiting for admin approval.");
+        Console.ResetColor();
+        Console.ReadKey();
+    }
+    catch (Exception ex)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"Error: {ex.Message}");
+        Console.ResetColor();
+        Console.ReadKey();
+    }
+}
+void ManageMyReviews(User user)
+{
+    try
+    {
+        var reviews = reviewService.GetReviewsByUser(user.Id);
+        if (!reviews.Any())
+        {
+            Console.WriteLine("You have no reviews.");
+            Console.ReadKey();
+            return;
+        }
+
+        ConsolePainter.WriteTable(reviews.Select(r => new
+        {
+            r.Id,
+            BookTitle = r.Book.Title,
+            r.Comment,
+            r.Rating,
+            Status = r.IsApproved ? "Approved" : "Pending"
+        }), headerColor: ConsoleColor.Green, rowColor: ConsoleColor.White);
+
+        Console.WriteLine("Enter Review ID to edit/delete (or 0 to cancel): ");
+        int reviewId;
+        while (!int.TryParse(Console.ReadLine(), out reviewId) || (reviewId != 0 && !reviews.Any(r => r.Id == reviewId)))
+        {
+            Console.Write("Invalid ID, enter again: ");
+        }
+        if (reviewId == 0) return;
+
+        Console.WriteLine("1. Edit Review");
+        Console.WriteLine("2. Delete Review");
+        Console.Write("Choose an option: ");
+        var action = Console.ReadLine();
+
+        if (action == "1")
+        {
+            Console.Write("Enter new comment (optional): ");
+            string? comment = Console.ReadLine();
+            int rating;
+            do
+            {
+                Console.Write("Enter new rating (1-5): ");
+            } while (!int.TryParse(Console.ReadLine(), out rating) || rating < 1 || rating > 5);
+
+            reviewService.EditReview(reviewId, comment, rating);
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Review updated successfully!");
+            Console.ResetColor();
+        }
+        else if (action == "2")
+        {
+            reviewService.DeleteReview(reviewId);
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Review deleted successfully!");
+            Console.ResetColor();
+        }
+
+        Console.ReadKey();
+    }
+    catch (Exception ex)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine($"Error: {ex.Message}");
+        Console.ResetColor();
+        Console.ReadKey();
+    }
+}
+void ManageReviews()
+{
+    var reviews = reviewService.GetAllReviews();
+    if (!reviews.Any())
+    {
+        Console.WriteLine("(No reviews found)");
+        Console.ReadKey();
+        return;
+    }
+
+    ConsolePainter.WriteTable(reviews.Select(r => new
+    {
+        r.Id,
+        User = r.User.UserName,
+        Book = r.Book.Title,
+        r.Comment,
+        r.Rating,
+        Status = r.IsApproved ? "Approved" : "Pending"
+    }), headerColor: ConsoleColor.Cyan, rowColor: ConsoleColor.White);
+
+    Console.Write("Enter Review ID to Approve/Reject (0 to cancel): ");
+    int reviewId;
+    while (!int.TryParse(Console.ReadLine(), out reviewId) || (reviewId != 0 && !reviews.Any(r => r.Id == reviewId)))
+    {
+        Console.Write("Invalid ID, enter again: ");
+    }
+    if (reviewId == 0) return;
+
+    var review = reviews.First(r => r.Id == reviewId);
+
+    Console.WriteLine("1. Approve Review");
+    Console.WriteLine("2. Reject/Delete Review");
+    Console.Write("Choose an option: ");
+    var action = Console.ReadLine();
+
+    if (action == "1")
+    {
+        reviewService.ApproveReview(reviewId);
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Review approved!");
+        Console.ResetColor();
+    }
+    else if (action == "2")
+    {
+        reviewService.DeleteReview(reviewId);
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("Review deleted!");
+        Console.ResetColor();
+    }
+
+    Console.ReadKey();
+}
+
 
